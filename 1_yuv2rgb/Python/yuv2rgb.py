@@ -6,6 +6,11 @@ IMG_HEIGHT = 3072
 IMG_WIDTH = 4080 
 
 def nv21_to_YUV(yuv_bytes):
+    """分离出NV21格式的YUV图像通道，返回三个通道对应的矩阵
+
+    :param yuv_bytes: NV21格式图像
+    :return: Y,U,V三个通道的矩阵
+    """
     uv_h = int(IMG_HEIGHT / 2)
     uv_w = int(IMG_WIDTH / 2)
     
@@ -24,6 +29,13 @@ def nv21_to_YUV(yuv_bytes):
     return Y, U, V
 
 def yuv2rgb(Y, U, V):
+    """根据YUV三个通道的矩阵转换成RGB通道，并合成RGB图像
+
+    :param Y: Y channel
+    :param U: U channel
+    :param V: V channel
+    :return: RGB image
+    """
     bgr_data = np.zeros((IMG_HEIGHT, IMG_WIDTH, 3), dtype=np.uint8)
     V = np.repeat(V, 2, 0)
     V = np.repeat(V, 2, 1)
