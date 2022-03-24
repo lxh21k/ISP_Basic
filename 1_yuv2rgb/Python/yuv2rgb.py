@@ -19,7 +19,6 @@ def nv21_to_YUV(yuv_bytes):
     V = np.zeros((uv_h, uv_w), dtype=np.uint8)
 
     y_length = IMG_HEIGHT * IMG_WIDTH
-    uv_length = uv_h * uv_w * 2
 
     Y[:, :] = yuv_bytes[: y_length].reshape((IMG_HEIGHT, IMG_WIDTH))
     VU = yuv_bytes[y_length :]
@@ -36,46 +35,43 @@ def yuv2rgb(Y, U, V):
     :param V: V channel
     :return: RGB image
     """
-    bgr_data = np.zeros((IMG_HEIGHT, IMG_WIDTH, 3), dtype=np.uint8)
+    bgr_bytes = np.zeros((IMG_HEIGHT, IMG_WIDTH, 3), dtype=np.uint8)
     V = np.repeat(V, 2, 0)
     V = np.repeat(V, 2, 1)
     U = np.repeat(U, 2, 0)
     U = np.repeat(U, 2, 1)
 
-    c = (Y - np.array([16])) * 298
-    d = U - np.array([128])
-    e = V - np.array([128])
+    # 采用bt601色域标准进行转换
+    r = Y + 1.14*(V - np.array([128]))
+    g = Y - 0.39*(U - np.array([128])) - 0.58*(V - np.array([128]))
+    b = Y + 2.03*(U - np.array([128]))
 
-    r = (c + 409 * e + 128) // 256
-    g = (c - 100 * d - 208 * e + 128) // 256
-    b = (c + 516 * d + 128) // 256
-
+    # 越界的值按照边界处理
     r = np.where(r < 0, 0, r)
     r = np.where(r > 255,255,r)
-
     g = np.where(g < 0, 0, g)
     g = np.where(g > 255,255,g)
-
     b = np.where(b < 0, 0, b)
     b = np.where(b > 255,255,b)
 
-    bgr_data[:, :, 2] = r
-    bgr_data[:, :, 1] = g
-    bgr_data[:, :, 0] = b
+    bgr_bytes[:, :, 2] = r
+    bgr_bytes[:, :, 1] = g
+    bgr_bytes[:, :, 0] = b
 
-    return bgr_data
+    return bgr_bytes
+
 
 if __name__ == '__main__':
+
     yuv = "./data/yuvdata/DUMP_2021_0608_082629655_size_4080x3072_4080x3072_r270_input_1_iso_0_ct_0_yuvhdr.nv21"
-    print(os.path.getsize(yuv))
+    print(os.path.getsize(yuv)) 
 
     with open(yuv, "rb") as yuv_image:
         yuv_bytes = yuv_image.read()
         yuv_bytes = np.frombuffer(yuv_bytes, np.uint8)
+
         Y, U, V = nv21_to_YUV(yuv_bytes)
-        bgr_data = yuv2rgb(Y,U,V)
-        print(bgr_data.shape)
-        # print(np.amax(Y))     # 8-bit 数值范围为0-255
+        bgr_bytes = yuv2rgb(Y,U,V)
+
         # cv2.imwrite("y_channel.jpg", Y)
-        
-        cv2.imwrite("result_bgr.jpg", bgr_data)
+        cv2.imwrite("result_bgr.jpg", bgr_bytes)
