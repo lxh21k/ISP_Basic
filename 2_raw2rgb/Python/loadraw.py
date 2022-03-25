@@ -10,7 +10,7 @@ def display_image(image, title=""):
     :param image: 图像
     :param title: 图像标题
     """
-    image_s = cv2.resize(image, (624, 832))
+    image_s = cv2.resize(image, (416, 312)) # 分辨率过大的时候笔记本会卡死
     cv2.imshow(title, image_s)
     cv2.waitKey()
 
@@ -82,14 +82,14 @@ if __name__ == '__main__':
 
         # 线性化/黑电平校正
         cfa_linear = linear(cfa, black, white)
-        display_image(cfa_linear, "cfa_linear")
+        # display_image(cfa_linear, "cfa_linear")
         # cv2.imwrite('cfa_linear.jpg', cfa_s)
 
         # 白平衡
         wbm = mask_WB(cfa.shape, rwb, bwb, pattern)
         cfa_wb = cfa_linear * wbm
         cfa_wb = np.clip(cfa_wb, 0.0001, 1)
-        display_image(cfa_wb, "cfa_wb")
+        # display_image(cfa_wb, "cfa_wb")
 
         # LSC, Lens Shading Correction
 
@@ -109,7 +109,7 @@ if __name__ == '__main__':
         B = np.clip(B, 0.0001, 1)
 
         demosaic_rgb = np.dstack((B, G, R))
-        display_image(demosaic_rgb, "demosaic_rgb")
+        # display_image(demosaic_rgb, "demosaic_rgb")
 
         # color space conversion, 使用一个3*3的颜色变换矩阵来进行颜色校正
         # srgb转xyz标准色彩空间的矩阵, 这是标准规定的
@@ -130,11 +130,17 @@ if __name__ == '__main__':
         g = cam2srgb_norm[1, 0] * R + cam2srgb_norm[1, 1] * G + cam2srgb_norm[1, 2] * B
         b = cam2srgb_norm[2, 0] * R + cam2srgb_norm[2, 1] * G + cam2srgb_norm[2, 2] * B
 
+        r = np.clip(r, 0.0001, 1)
+        g = np.clip(g, 0.0001, 1)
+        b = np.clip(b, 0.0001, 1)
+
         csc_rgb = np.dstack((b, g, r))
-        display_image(csc_rgb, "csc_rgb")
+        # display_image(csc_rgb, "csc_rgb")
 
         # gamma校正
         gamma = 2.2
         gamma_rgb = np.power(csc_rgb, 1/gamma)
         display_image(gamma_rgb, "gamma_rgb")
+        gamma_rgb = gamma_rgb * 255
+        cv2.imwrite('gamma_rgb.jpg', gamma_rgb)
         
