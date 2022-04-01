@@ -146,21 +146,25 @@ if __name__ == '__main__':
 
         # 线性化/黑电平校正
         cfa_linear = linear(cfa, black, white)
-        # display_Image(cfa_linear, "cfa_linear")
+        display_Image(cfa_linear, "cfa_linear")
 
         # 白平衡
         wbm = mask_WB(cfa.shape, rwb, bwb, pattern)
         cfa_wb = cfa_linear * wbm
         cfa_wb = np.clip(cfa_wb, 0.0001, 1)
-        # display_Image(cfa_wb, "cfa_wb")
+        display_Image(cfa_wb, "cfa_wb")
 
         # LSC, Lens Shading Correction
         full_lsc_mask = read_Meta(meta_path)
 
         cfa_lsc = cfa_wb * full_lsc_mask
+
         cfa_lsc = (cfa_lsc - np.amin(cfa_lsc)) / (np.amax(cfa_lsc) - np.amin(cfa_lsc))
-        cfa_lsc = np.clip(cfa_lsc, 0.0001, 1)
-        # display_Image(cfa_lsc, "cfa_lsc")
+        # for (x, y) in [(0,0), (0,1), (1,0), (1,1)]:
+        #     cfa_lsc[y::2, x::2] = (cfa_lsc[y::2, x::2] - np.amin(cfa_lsc[y::2, x::2])) / (np.amax(cfa_lsc[y::2, x::2]) - np.amin(cfa_lsc[y::2, x::2]))
+
+        # cfa_lsc = np.clip(cfa_lsc, 0.0001, 1)
+        display_Image(cfa_lsc, "cfa_lsc")
 
         # Demosaic
         Rm, Gm, Bm = mask_Bayer(cfa.shape, pattern)

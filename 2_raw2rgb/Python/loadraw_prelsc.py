@@ -3,9 +3,8 @@ import os
 import numpy as np
 import cv2
 from scipy import signal
-from lsc import mask_LSC, txt2array
 
-def display_image(image, title=""):
+def display_Image(image, title=""):
     """显示图像
 
     :param image: 图像
@@ -28,7 +27,68 @@ def linear(cfa, black, white):
     cfa = (cfa - black) / (white - black)
     return cfa
 
-# def mask_LSC(shape, )
+def lsc_Channel(data, channel):
+    """对meta data中的矩阵进行数值压缩和插值放大，生成对应通道的LSC矩阵
+
+    :param data: 从txt中读取的lsc相关数据
+    :param channel: 通道 "r", "gr", "gb", "b"
+    :return: 对应通道的lsc矩阵 (3120, 4160)
+    """
+    channel_flag = int(np.where(data == (channel+':'))[0])
+    channel_mat = data[channel_flag+1: channel_flag+13+1]
+
+    channel_lsc = []
+
+    for line in channel_mat:
+        line = line.rstrip()
+        line = list(map(int, line.split(' ')))
+        channel_lsc.append(line)
+
+    channel_lsc = np.array(channel_lsc)
+    channel_lsc = channel_lsc / 1000
+    channel_lsc = cv2.resize(channel_lsc, (4160, 3120), interpolation=cv2.INTER_LINEAR)
+
+    return channel_lsc
+
+def mask_LSC(shape, r_lsc_mask, gr_lsc_mask, gb_lsc_mask, b_lsc_mask):
+    """合并四个通道的LSC矩阵，得到一张和Bayer Raw对应的Mask
+
+    :param shape: 返回的mask的shape
+    :param r_lsc_mask: 
+    :param gr_lsc_mask: 
+    :param gb_lsc_mask: 
+    :param b_lsc_mask: 
+    :return: mask
+    """
+    full_lsc_mask = np.zeros(shape)
+    channels = ["r", "gr", "b", "gb"]
+    lsc_masks = {"r": r_lsc_mask, "gr": gr_lsc_mask, "b": b_lsc_mask, "gb": gb_lsc_mask}
+    for channel, (y, x) in zip(channels, [(0, 0), (0, 1), (1, 0), (1, 1)]):
+        mask = np.zeros(shape)
+        mask[y::2, x::2] = 1
+        mask = np.multiply(mask, lsc_masks[channel])
+        full_lsc_mask = np.add(full_lsc_mask, mask)
+
+    return full_lsc_mask
+
+
+def read_Meta(meta_path):
+    """ 读取meta文件中的LSC矩阵，并拼接四个通道的LSC矩阵为一个全尺寸的mask
+
+    :param meta_path: meta文件的路径
+    :return: LSC矩阵
+    """
+    with open(meta_path, 'r') as f:
+        data = f.read().split('\n')
+        data = np.array(data)
+
+        r_lsc_mask = lsc_Channel(data, 'r')
+        gr_lsc_mask = lsc_Channel(data, 'gr')
+        b_lsc_mask = lsc_Channel(data, 'b')
+        gb_lsc_mask = lsc_Channel(data, 'gb')
+        full_lsc_mask = mask_LSC((3120, 4160), r_lsc_mask, gr_lsc_mask, gb_lsc_mask, b_lsc_mask)
+    
+    return full_lsc_mask
 
 def mask_WB(shape, rwb, bwb, pattern="RGGB"):
     """根据pattern生成mask
@@ -72,8 +132,8 @@ if __name__ == '__main__':
     bwb = 1.742253
     pattern = 'RGGB'
 
-
     path = 'input_raw_dump_4160x3120_input_0_ev0_processTime20210601_142818.raw'
+    meta_path = "./lsc.txt"
     print(os.path.getsize(path))
 
     with open(path, "rb") as f:
@@ -86,34 +146,29 @@ if __name__ == '__main__':
 
         # 线性化/黑电平校正
         cfa_linear = linear(cfa, black, white)
-        # display_image(cfa_linear, "cfa_linear")
-        # cv2.imwrite('cfa_linear.jpg', cfa_s)
+        # display_Image(cfa_linear, "cfa_linear")
 
         # LSC, Lens Shading Correction
-        meta_path = "./lsc.txt"
-        full_mask = np.zeros(cfa.shape)
-        with open(meta_path, 'r') as f:
-            data = f.read().split('\n')
-            data = np.array(data)
+        full_lsc_mask = read_Meta(meta_path)
 
-            r_lsc_mask = txt2array(data, 'r')
-            gr_lsc_mask = txt2array(data, 'gr')
-            b_lsc_mask = txt2array(data, 'b')
-            gb_lsc_mask = txt2array(data, 'gb')
-            full_mask = mask_LSC((3120, 4160), r_lsc_mask, gr_lsc_mask, gb_lsc_mask, b_lsc_mask)
-        
-        cfa_lsc = np.multiply(cfa_linear, full_mask)
-        cfa_lsc = (cfa_lsc - np.amin(cfa_lsc)) / (np.amax(cfa_lsc) - np.amin(cfa_lsc))
-        cfa_lsc = np.clip(cfa_lsc, 0.0001, 1)
-        display_image(cfa_lsc, "cfa_lsc")
+        cfa_lsc = cfa_linear * full_lsc_mask
+
+        # cfa_lsc = (cfa_lsc - np.amin(cfa_lsc)) / (np.amax(cfa_lsc) - np.amin(cfa_lsc))
+        # for (y, x) in [(0,0), (0,1), (1,0), (1,1)]:
+        #     cfa_lsc[y::2, x::2] = (cfa_lsc[y::2, x::2] - np.amin(cfa_lsc[y::2, x::2])) / (np.amax(cfa_lsc[y::2, x::2]) - np.amin(cfa_lsc[y::2, x::2]))
+
+        # print(np.amax(cfa_lsc))
+        # cfa_lsc = np.clip(cfa_lsc, 0.0001, 1)
+
+        display_Image(cfa_lsc, "cfa_lsc")
 
         # 白平衡
         wbm = mask_WB(cfa.shape, rwb, bwb, pattern)
         cfa_wb = cfa_lsc * wbm
+        for (y, x) in [(0,0), (0,1), (1,0), (1,1)]:
+            cfa_wb[y::2, x::2] = (cfa_wb[y::2, x::2] - np.amin(cfa_wb[y::2, x::2])) / (np.amax(cfa_wb[y::2, x::2]) - np.amin(cfa_wb[y::2, x::2]))
         cfa_wb = np.clip(cfa_wb, 0.0001, 1)
-        # display_image(cfa_wb, "cfa_wb")
-
-        
+        display_Image(cfa_wb, "cfa_wb")
 
         # Demosaic
         Rm, Gm, Bm = mask_Bayer(cfa.shape, pattern)
@@ -132,7 +187,7 @@ if __name__ == '__main__':
         B = np.clip(B, 0.0001, 1)
 
         demosaic_rgb = np.dstack((B, G, R))
-        # display_image(demosaic_rgb, "demosaic_rgb")
+        display_Image(demosaic_rgb, "demosaic_rgb")
 
         # color space conversion, 使用一个3*3的颜色变换矩阵来进行颜色校正
         # srgb转xyz标准色彩空间的矩阵, 这是标准规定的
@@ -158,12 +213,12 @@ if __name__ == '__main__':
         b = np.clip(b, 0.0001, 1)
 
         csc_rgb = np.dstack((b, g, r))
-        # display_image(csc_rgb, "csc_rgb")
+        # display_Image(csc_rgb, "csc_rgb")
 
         # gamma校正
         gamma = 2.2
         gamma_rgb = np.power(csc_rgb, 1/gamma)
-        display_image(gamma_rgb, "gamma_rgb")
+        display_Image(gamma_rgb, "gamma_rgb")
         gamma_rgb = gamma_rgb * 255
         cv2.imwrite('gamma_rgb.jpg', gamma_rgb)
         
