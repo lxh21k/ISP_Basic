@@ -1,0 +1,12 @@
+The meaning of the folder
+include: head file (*.h)
+src: source file (*.cpp)
+data: data file
+
+Please follow the steps below
+1. mkdir build
+2. cd build
+3. cmake ..
+4. make
+5. chmod +x yuv2rgb // E.g. yuv2rgb
+6. ./yuv2rgb // execute executable program 
