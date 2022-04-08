@@ -45,8 +45,8 @@ def lsc_Channel(data, channel):
         channel_lsc.append(line)
 
     channel_lsc = np.array(channel_lsc)
-    channel_lsc = channel_lsc / 1000
-    channel_lsc = cv2.resize(channel_lsc, (4160, 3120), interpolation=cv2.INTER_LINEAR)
+    channel_lsc = channel_lsc / 1024
+    channel_lsc = cv2.resize(channel_lsc, (4160, 3120))
 
     return channel_lsc
 
@@ -195,14 +195,17 @@ if __name__ == '__main__':
                             [0.2126729, 0.7151522, 0.0721750],
                             [0.0193339, 0.1191920, 0.9503041]])
         # 相机空间转xyz色彩空间的矩阵, dng里面有提供
-        cam2xyz = np.mat([  [0.7188, 0.1641, 0.0781],
-                            [0.2656, 0.8984, -0.1562],
-                            [0.0625, -0.4062, 1.1719]])
+        # cam2xyz = np.mat([  [0.7188, 0.1641, 0.0781],
+        #                     [0.2656, 0.8984, -0.1562],
+        #                     [0.0625, -0.4062, 1.1719]])
+        cam2xyz = np.mat([[1.679688, -0.742188, 0.054688],
+                          [-0.164062, 1.351562, -0.187500],
+                          [0.078125, -0.687500, 1.609375]])
         # 求逆得到xyz色彩空间转srgb色彩空间的矩阵
         xyz2srgb = srgb2xyz.I
         cam2srgb = cam2xyz * xyz2srgb
         # 保证矩阵每一行元素之和为1
-        cam2srgb_norm = cam2srgb / np.repeat(np.sum(cam2srgb, 1), 3).reshape(3, 3)
+        cam2srgb_norm = cam2xyz / np.repeat(np.sum(cam2xyz, 1), 3).reshape(3, 3)
 
         r = cam2srgb_norm[0, 0] * R + cam2srgb_norm[0, 1] * G + cam2srgb_norm[0, 2] * B
         g = cam2srgb_norm[1, 0] * R + cam2srgb_norm[1, 1] * G + cam2srgb_norm[1, 2] * B
