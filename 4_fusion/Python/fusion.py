@@ -2,21 +2,21 @@ import cv2
 import numpy as np
 
 def up_sample(img, dst_shape=None):
-    kernel = cv2.getGaussianKernel(ksize=5, sigma=0.5)
+    kernel = cv2.getGaussianKernel(ksize=5, sigma=0.4)
 
     if dst_shape is None:
         res = cv2.resize(img, None, fx=2, fy=2)
     else:
         res = cv2.resize(img, dst_shape)
 
-    res = cv2.filter2D(res, cv2.CV_8U, kernel)
+    res = cv2.filter2D(res, cv2.CV_8UC3, kernel)
 
     return res
 
 def down_sample(img):
-    kernel = cv2.getGaussianKernel(ksize=5, sigma=0.5)
+    kernel = cv2.getGaussianKernel(ksize=5, sigma=0.4)
 
-    res = cv2.filter2D(img, cv2.CV_8U, kernel)
+    res = cv2.filter2D(img, cv2.CV_8UC3, kernel)
     res = cv2.resize(res, None, fx=0.5, fy=0.5)
 
     return res
@@ -29,6 +29,9 @@ def gaussian_pyramid(img, depth):
     return gp
 
 def laplacian_pyramid(img, depth):
+    """
+    :param img: input image, format should be uint8
+    """
     gp = gaussian_pyramid(img, depth)
     lp = [gp[-1]]
     for i in range(depth, 0, -1):
@@ -50,18 +53,27 @@ def compute_weight(imgs):
 
         # contrast 
         img_gary = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        laplacian_img = cv2.Laplacian(img_gary, cv2.CV_32F)   
+        laplacian_img = cv2.Laplacian(img_gary, cv2.CV_32F)
         W_contrast = np.abs(laplacian_img) ** w_c
-        W = np.multiply(W, W_contrast)
+        # print(np.amax(W_contrast))
+        # W = np.multiply(W, W_contrast)
 
         # saturation
         W_saturation = img.std(axis=2, dtype=np.float32) ** w_s
-        W = np.multiply(W, W_saturation)
+        # print(np.amax(W_saturation))
+        # W = np.multiply(W, W_saturation)
 
         # well-exposedness
         sigma = 0.2
-        W_well_exposedness = np.prod(np.exp(- ((img-0.5) ** 2) / (2 * (sigma ** 2))), axis=2, dtype=np.float32) ** w_e
-        W = np.multiply(W, W_well_exposedness)
+        W_well_exposedness = np.prod(np.exp(- (np.power((img-0.5), 2) / (2 * (sigma ** 2)))), axis=2, dtype=np.float32) ** w_e
+        # print(np.amax(W_well_exposedness))
+        # b, g, r = cv2.split(img)
+        # r_w = np.exp(-0.5 * np.power(r-0.5, 2) / (sigma ** 2))
+        # g_w = np.exp(-0.5 * np.power(g-0.5, 2) / (sigma ** 2))
+        # b_w = np.exp(-0.5 * np.power(b-0.5, 2) / (sigma ** 2))
+        # # W_well_exposedness = np.prod([r_w, g_w, b_w], axis=0, dtype=np.float32) ** w_e
+        # W_well_exposedness = np.multiply(r_w, np.multiply(g_w, b_w), dtype=np.float32) ** w_e
+        # W = np.multiply(W, W_well_exposedness)
 
         weights_sum += W
         weights.append(W)
@@ -72,3 +84,12 @@ def compute_weight(imgs):
         weights[i] = np.uint8(weights[i] * 255)
 
     return weights
+
+def pyramid_reconstruct(pyramid):
+    depth = len(pyramid)
+    res = pyramid[0]
+    for i in range(depth-1):
+        # print(pyramid[i+1].shape)
+        next_layer_shape = [pyramid[i+1].shape[1], pyramid[i+1].shape[0]]
+        res = np.add(up_sample(res, dst_shape=(next_layer_shape)), pyramid[i+1])
+    return res
