@@ -19,7 +19,7 @@ void MultiFusion::Contrast(vector<cv::Mat> &imgs){
 
         img.convertTo(img, CV_32FC3);
         img = img / 255;
-        cv::cvtColor(img, img_gray, CV_BGR2GRAY);
+        cv::cvtColor(img, img_gray, cv::COLOR_BGRA2GRAY);
         cv::Laplacian(img_gray, c_weight, CV_32FC1, 3);
         // cv::convertScaleAbs(c_weight, c_weight);
         c_weight = abs(c_weight);
