@@ -173,6 +173,9 @@ vector<cv::Mat> MultiFusion::PyramidFusion(vector<cv::Mat> &imgs) {
     fused_laplacian_pyramid.resize(depth);
 
     for (int layer=0; layer < depth; layer++){
+        
+        fused_laplacian_pyramid[layer] = cv::Mat(imgs_laplacian_pyramid[0][layer].rows, imgs_laplacian_pyramid[0][layer].cols, CV_32FC3, 0.);
+        
         for (int i=0; i < imgs.size(); i++){
             cv::Mat layer_weight = weights_gaussian_pyramid[i][depth - layer - 1];
             cv::Mat layer_img = imgs_laplacian_pyramid[i][layer];
@@ -183,13 +186,20 @@ vector<cv::Mat> MultiFusion::PyramidFusion(vector<cv::Mat> &imgs) {
             }
             cv::merge(&channels[0], 3, layer_weight);
 
-            fused_laplacian_pyramid[layer] = cv::Mat(layer_img.rows, layer_img.cols, CV_32FC3, 0.);
+            // fused_laplacian_pyramid[layer] = cv::Mat(layer_img.rows, layer_img.cols, CV_32FC3, 0.);
 
             // cout << "Layer Img" << layer_img.type() << endl;
             // cout << "Layer Weight" << layer_weight.type() << endl;
             // cout << "Pyramid" << fused_laplacian_pyramid[layer].type() << endl;
 
             fused_laplacian_pyramid[layer] += layer_weight.mul(layer_img);
+
+            if(layer == 0){
+                layer_img.convertTo(layer_img, CV_8UC3, 255.);
+                layer_weight.convertTo(layer_weight, CV_8UC3, 255.);
+                cv::imwrite("../results/layer_weight_" + to_string(i) + ".jpg", layer_weight);
+                cv::imwrite("../results/layer_img_" + to_string(i) + ".jpg", layer_img);
+            }
         }
         
     }

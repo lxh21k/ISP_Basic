@@ -1,10 +1,10 @@
 objects = main.o LapPym.o MultiFusion.o
-CFLAGS = `pkg-config --cflags --libs opencv4`
-LIBS = `pkg-config --libs opencv4`
+CFLAGS = `pkg-config --cflags --libs opencv`
+LIBS = `pkg-config --libs opencv`
 CPPFLAGS = -std=c++11
 
-mout : $(objects)
-	g++ $(CPPFLAGS) -o mout $(objects) $(CFLAGS) $(LIBS)
+out : $(objects)
+	g++ $(CPPFLAGS) -o out $(objects) $(CFLAGS) $(LIBS)
 
 main.o : Fusion/MultiFusion.h
 	g++ $(CPPFLAGS) -c main.cpp $(CFLAGS) $(LIBS)
@@ -16,4 +16,4 @@ LapPym.o : Fusion/LapPym.hpp
 .PHONY : clean
 
 clean : 
-	-rm mout $(objects)
+	-rm out $(objects)
