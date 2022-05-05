@@ -194,12 +194,12 @@ vector<cv::Mat> MultiFusion::PyramidFusion(vector<cv::Mat> &imgs) {
 
             fused_laplacian_pyramid[layer] += layer_weight.mul(layer_img);
 
-            if(layer == 0){
-                layer_img.convertTo(layer_img, CV_8UC3, 255.);
-                layer_weight.convertTo(layer_weight, CV_8UC3, 255.);
-                cv::imwrite("../results/layer_weight_" + to_string(i) + ".jpg", layer_weight);
-                cv::imwrite("../results/layer_img_" + to_string(i) + ".jpg", layer_img);
-            }
+            // if(layer == 0){
+            //     layer_img.convertTo(layer_img, CV_8UC3, 255.);
+            //     layer_weight.convertTo(layer_weight, CV_8UC3, 255.);
+            //     cv::imwrite("../results/layer_weight_" + to_string(i) + ".jpg", layer_weight);
+            //     cv::imwrite("../results/layer_img_" + to_string(i) + ".jpg", layer_img);
+            // }
         }
         
     }
