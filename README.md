@@ -5,7 +5,6 @@
 - Done:
     - 1.YUV2RGB
     - 2.Raw2RGB
-- Todo:
     - 3.bilateral
     - 4.fusion
     - 5.Adaptive Unsharp Masking
